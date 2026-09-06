@@ -28,9 +28,21 @@ packages/shared     Shared types & constants
 
 ```bash
 pnpm install
+cp .env.example apps/web/.env.local
+# set BETTER_AUTH_SECRET to a long random string
 pnpm test:engine
-pnpm dev
+pnpm dev:web
 ```
+
+Open http://localhost:3000
+
+### Auth security
+
+- Email + password registration / sign-in
+- Passwords hashed with **Argon2id** (never stored as plaintext)
+- Sessions via HttpOnly cookies (Better Auth)
+- Local SQLite DB at `apps/web/data/mk-poker.db` (gitignored)
+- Email addresses are not exposed to other players
 
 ## Scripts
 

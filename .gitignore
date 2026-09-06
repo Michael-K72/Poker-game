@@ -11,6 +11,11 @@ coverage
 .env.*.local
 !.env.example
 
+# Local database
+data/
+*.db
+*.db-journal
+
 # Tooling
 .tools
 .DS_Store

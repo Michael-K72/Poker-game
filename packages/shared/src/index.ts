@@ -54,8 +54,11 @@ export const ROOM_PRESETS = {
     { sb: 100, bb: 200 },
     { sb: 250, bb: 500 },
   ] as const,
-  actionTimers: [15, 30, 45, 60] as const,
+  actionTimers: [15, 20, 30, 45, 60] as const,
   seats: [2, 3, 4, 5, 6, 7, 8] as const,
 } as const;
+
+/** Default seconds per player action (bot + human). */
+export const DEFAULT_ACTION_TIMER_SEC = 20;
 
 export type Difficulty = keyof typeof TABLE_THEMES;

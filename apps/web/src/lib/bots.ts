@@ -102,7 +102,7 @@ function pickWeighted(
   weights: Array<{ action: LegalAction; w: number }>,
 ): LegalAction {
   const total = weights.reduce((s, x) => s + x.w, 0);
-  let r = rng.nextInt(1000) / 1000 * total;
+  let r = (rng.nextInt(1000) / 1000) * total;
   for (const item of weights) {
     r -= item.w;
     if (r <= 0) return item.action;
@@ -134,7 +134,6 @@ export function chooseBotAction(
   const raise = legal.find((a) => a.type === "raise");
   const allIn = legal.find((a) => a.type === "all_in");
 
-  // Easy bots: often call/check, rarely fold strong spots incorrectly via noise
   if (check && rng.nextInt(100) < 55 + (bot.difficulty === "easy" ? 15 : 0)) {
     return { type: "check" };
   }
@@ -158,15 +157,17 @@ export function chooseBotAction(
   if (chosen.type === "bet" || chosen.type === "raise") {
     const min = chosen.minAmount ?? state.config.bigBlind;
     const max = chosen.maxAmount ?? min;
-    // Size: min to ~pot-ish mid depending on difficulty
     const span = Math.max(0, max - min);
     const factor =
       bot.difficulty === "expert"
-        ? 0.45 + (rng.nextInt(40) / 100)
+        ? 0.45 + rng.nextInt(40) / 100
         : bot.difficulty === "hard"
-          ? 0.35 + (rng.nextInt(40) / 100)
-          : 0.2 + (rng.nextInt(30) / 100);
-    const amount = Math.min(max, Math.max(min, Math.floor(min + span * factor)));
+          ? 0.35 + rng.nextInt(40) / 100
+          : 0.2 + rng.nextInt(30) / 100;
+    const amount = Math.min(
+      max,
+      Math.max(min, Math.floor(min + span * factor)),
+    );
     return { type: chosen.type, amount };
   }
 
@@ -175,6 +176,34 @@ export function chooseBotAction(
   }
 
   return { type: chosen.type };
+}
+
+/** Random human-like think time (ms), capped under the action timer. */
+export function botThinkDelayMs(
+  bot: BotProfile,
+  actionTimerSec: number,
+  rng: RandomSource = mathRandomSource(),
+): number {
+  const personalityPad: Record<BotPersonality, [number, number]> = {
+    aggressive: [600, 2200],
+    passive: [1200, 4000],
+    tight: [1400, 4500],
+    loose: [700, 2800],
+    tricky: [1500, 5200],
+    balanced: [900, 3500],
+  };
+  const difficultyPad: Record<Difficulty, number> = {
+    easy: 0,
+    medium: 400,
+    hard: 800,
+    expert: 1200,
+  };
+  const [lo, hi] = personalityPad[bot.personality];
+  const span = Math.max(200, hi - lo);
+  const base = lo + rng.nextInt(span) + difficultyPad[bot.difficulty];
+  // Leave headroom so bots usually act before the hard timer
+  const maxMs = Math.max(800, (actionTimerSec - 2) * 1000);
+  return Math.min(base, maxMs);
 }
 
 export function createBotTable(options: {
@@ -231,47 +260,87 @@ export function createBotTable(options: {
   return { state, bots, humanId };
 }
 
-export function advanceBotsUntilHumanOrEnd(
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export type BotAdvanceOptions = {
+  actionTimerSec?: number;
+  /** Abort when generation changes (user acted / left). */
+  shouldCancel?: () => boolean;
+  onState?: (state: TableState) => void;
+  maxSteps?: number;
+};
+
+/**
+ * Advance bot seats one-by-one with human-like pauses.
+ */
+export async function advanceBotsUntilHumanOrEnd(
   state: TableState,
   runtime: { deck: import("@mk/poker-engine").Deck },
   bots: BotProfile[],
   humanId: string,
   rng: RandomSource = mathRandomSource(),
-  maxSteps = 64,
-): TableState {
+  options: BotAdvanceOptions = {},
+): Promise<TableState> {
+  const actionTimerSec = options.actionTimerSec ?? 20;
+  const maxSteps = options.maxSteps ?? 64;
   let s = state;
   let steps = 0;
+
   while (
     steps < maxSteps &&
     s.phase !== "hand_complete" &&
     s.phase !== "game_complete" &&
     s.actingSeat !== null
   ) {
+    if (options.shouldCancel?.()) break;
+
     const actor = getPlayerBySeat(s, s.actingSeat);
     if (!actor) break;
     if (actor.id === humanId) break;
+
     const bot = bots.find((b) => b.id === actor.id);
     if (!bot) break;
+
+    options.onState?.(s);
+    const delay = botThinkDelayMs(bot, actionTimerSec, rng);
+    await sleep(delay);
+    if (options.shouldCancel?.()) break;
+
     const intent = chooseBotAction(s, bot, rng);
     s = applyAction(s, actor.id, intent, runtime);
+    options.onState?.(s);
     steps += 1;
   }
+
   return s;
 }
 
-export function startBotHand(
+export async function startBotHand(
   state: TableState,
   bots: BotProfile[],
   humanId: string,
   rng: RandomSource = mathRandomSource(),
+  options: BotAdvanceOptions = {},
 ) {
   const started = startHand(state, rng);
-  const advanced = advanceBotsUntilHumanOrEnd(
+  const advanced = await advanceBotsUntilHumanOrEnd(
     started.state,
     started.runtime,
     bots,
     humanId,
     rng,
+    options,
   );
   return { state: advanced, runtime: started.runtime };
+}
+
+/** Timeout policy: check if legal, otherwise fold. */
+export function timeoutAction(state: TableState): PlayerActionIntent {
+  const legal = getLegalActions(state);
+  if (legal.some((a) => a.type === "check")) {
+    return { type: "check" };
+  }
+  return { type: "fold" };
 }

@@ -118,6 +118,12 @@ export function LandingHero() {
           >
             SIGN IN
           </Link>
+          <Link
+            href="/register"
+            className="inline-flex min-w-[200px] items-center justify-center rounded-full border border-white/10 px-8 py-3.5 text-xs tracking-[0.28em] text-[var(--color-titanium)] transition hover:border-white/30 hover:text-white"
+          >
+            CREATE ACCOUNT
+          </Link>
         </motion.div>
 
         <p className="relative mt-10 text-[0.65rem] tracking-[0.35em] text-[var(--color-titanium)]">
