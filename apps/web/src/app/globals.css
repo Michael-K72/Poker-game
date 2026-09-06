@@ -1,0 +1,78 @@
+@import "tailwindcss";
+
+@theme {
+  --color-obsidian: #050608;
+  --color-midnight: #0a0e16;
+  --color-graphite: #1a1f2a;
+  --color-titanium: #8b93a7;
+  --color-platinum: #d6d9e2;
+  --color-champagne: #c6a75e;
+  --color-champagne-bright: #e0c57a;
+  --color-ice: #7eb6d6;
+  --color-felt-lounge: #1c3a2e;
+  --color-felt-obsidian: #12161c;
+  --color-felt-eclipse: #0d1520;
+  --color-felt-vault: #0a1018;
+  --font-display: "Syne", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --ease-royal: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--color-obsidian);
+    color: var(--color-platinum);
+    font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-champagne) 40%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-champagne);
+    outline-offset: 3px;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .metal-edge {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+      0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  .play-money-badge {
+    letter-spacing: 0.18em;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--color-titanium) 85%, white);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

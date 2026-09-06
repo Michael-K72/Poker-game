@@ -1,0 +1,24 @@
+{
+  "name": "mk-poker-royale",
+  "private": true,
+  "version": "0.1.0",
+  "description": "MK Poker Royale — premium play-money No-Limit Texas Hold'em",
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "dev:web": "pnpm --filter @mk/web dev",
+    "dev:game": "pnpm --filter @mk/game-server dev",
+    "test:engine": "pnpm --filter @mk/poker-engine test"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.8.3"
+  }
+}
