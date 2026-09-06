@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import type { Difficulty } from "@mk/shared";
-import { TABLE_THEMES } from "@mk/shared";
+import { ECONOMY, TABLE_THEMES } from "@mk/shared";
 import type { HandRuntime, TableState } from "@mk/poker-engine";
 import {
   applyAction,
@@ -19,6 +19,7 @@ import {
 } from "@/lib/bots";
 import { PokerTable } from "@/components/table/PokerTable";
 import { ActionBar } from "@/components/table/ActionBar";
+import { HandGuide } from "@/components/help/HandGuide";
 
 type Props = {
   difficulty: Difficulty;
@@ -52,6 +53,8 @@ export function BotTableSession({
   const [state, setState] = useState<TableState>(initial.state);
   const [sessionChips] = useState(() => chipTotal(initial.state));
   const [status, setStatus] = useState("Press DEAL to begin");
+  const [guidePinned, setGuidePinned] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
 
   const deal = useCallback(() => {
     const started = startBotHand(state, bots, humanId, rng);
@@ -159,16 +162,28 @@ export function BotTableSession({
             {chipTotal(state).toLocaleString()}/{sessionChips.toLocaleString()}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onExit}
-          className="rounded-full border border-white/15 px-4 py-2 text-[0.65rem] tracking-[0.2em] text-[var(--color-titanium)] hover:text-white"
-        >
-          LEAVE
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setResetOpen(true)}
+            className="rounded-full border border-white/15 px-3 py-2 text-[0.6rem] tracking-[0.15em] text-[var(--color-titanium)] hover:text-white"
+          >
+            RESET BANKROLL
+          </button>
+          <button
+            type="button"
+            onClick={onExit}
+            className="rounded-full border border-white/15 px-4 py-2 text-[0.65rem] tracking-[0.2em] text-[var(--color-titanium)] hover:text-white"
+          >
+            LEAVE
+          </button>
+        </div>
       </header>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-3 pb-4">
+      <div className="relative flex flex-1 flex-col items-center justify-center px-3 pb-4">
+        <div className="absolute right-2 top-2 z-30 md:right-6">
+          <HandGuide pinned={guidePinned} onPinChange={setGuidePinned} />
+        </div>
         <PokerTable state={state} humanId={humanId} />
         <p className="mt-4 text-xs tracking-[0.2em] text-[var(--color-titanium)]">
           {status}
@@ -185,6 +200,71 @@ export function BotTableSession({
             : ""}
         </p>
       </div>
+
+      {resetOpen ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-white/15 bg-[var(--color-midnight)] p-6 metal-edge">
+            <h2
+              id="reset-title"
+              className="text-sm tracking-[0.25em] text-white"
+              style={{ fontFamily: "var(--font-display)" }}
+            >
+              RESET BANKROLL?
+            </h2>
+            <p className="mt-3 text-sm text-[var(--color-titanium)]">
+              Your practice chips will be restored to{" "}
+              {ECONOMY.bankrollResetAmount.toLocaleString()} {ECONOMY.chipLabel}.
+              Hand history is unchanged in guest mode (session only).
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setResetOpen(false)}
+                className="flex-1 rounded-full border border-white/20 py-3 text-xs tracking-[0.2em] text-[var(--color-platinum)]"
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const amount = ECONOMY.bankrollResetAmount;
+                  setState((prev) => ({
+                    ...prev,
+                    phase: "waiting",
+                    pot: 0,
+                    communityCards: [],
+                    showdown: undefined,
+                    actingSeat: null,
+                    pendingActSeats: [],
+                    currentBet: 0,
+                    players: prev.players.map((p) => ({
+                      ...p,
+                      stack: amount,
+                      streetBet: 0,
+                      handContributed: 0,
+                      holeCards: null,
+                      folded: false,
+                      allIn: false,
+                      eliminated: false,
+                    })),
+                  }));
+                  setRuntime(null);
+                  setStatus("BANKROLL RESET · 50,000 MK CHIPS RESTORED");
+                  setResetOpen(false);
+                }}
+                className="flex-1 rounded-full bg-[var(--color-champagne)] py-3 text-xs font-semibold tracking-[0.2em] text-[var(--color-obsidian)]"
+              >
+                RESET
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="border-t border-white/10 bg-black/40 px-3 py-4 backdrop-blur-md md:px-8">
         {state.phase === "waiting" || !runtime ? (
